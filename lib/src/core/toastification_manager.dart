@@ -159,6 +159,7 @@ class ToastificationManager {
           () {
             if (notifications.isEmpty) {
               overlayEntry?.remove();
+              overlayEntry?.dispose();
               overlayEntry = null;
             }
           },

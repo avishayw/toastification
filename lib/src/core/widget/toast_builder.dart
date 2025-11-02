@@ -36,59 +36,99 @@ final class ToastHolderWidget extends StatelessWidget {
   }
 }
 
-class _AnimationTransformer extends AnimatedWidget {
+class _AnimationTransformer extends StatefulWidget {
   const _AnimationTransformer({
-    required Animation<double> animation,
+    required this.animation,
     required this.alignment,
     required this.transformerBuilder,
     required this.child,
-  }) : super(listenable: animation);
+  });
 
-  Animation<double> get animation => listenable as Animation<double>;
-
+  final Animation<double> animation;
   final AlignmentGeometry alignment;
-
   final ToastificationAnimationBuilder transformerBuilder;
-
   final Widget child;
+
+  @override
+  State<_AnimationTransformer> createState() => _AnimationTransformerState();
+}
+
+class _AnimationTransformerState extends State<_AnimationTransformer> {
+  late final CurvedAnimation _slideInCurvedAnimation;
+  late final Animation<double> _slideInAnimation;
+  late final CurvedAnimation _targetCurvedAnimation;
+  late final Animation<double> _targetAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.animation.addListener(_handleChange);
+
+    _slideInCurvedAnimation = CurvedAnimation(
+      parent: widget.animation,
+      curve: const Interval(
+        0,
+        0.6,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _slideInAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(_slideInCurvedAnimation);
+
+    _targetCurvedAnimation = CurvedAnimation(
+      parent: widget.animation,
+      curve: const Interval(
+        0.3,
+        1,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _targetAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(_targetCurvedAnimation);
+  }
+
+  @override
+  void didUpdateWidget(_AnimationTransformer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.animation != oldWidget.animation) {
+      oldWidget.animation.removeListener(_handleChange);
+      widget.animation.addListener(_handleChange);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.animation.removeListener(_handleChange);
+    _slideInCurvedAnimation.dispose();
+    _targetCurvedAnimation.dispose();
+    super.dispose();
+  }
+
+  void _handleChange() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      // The animation's state is our build state, and it changed already.
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     const AlignmentDirectional axisAlign = AlignmentDirectional(-1.0, 0);
 
-    final alignment = this.alignment.resolve(Directionality.of(context));
-
-    final slideInAnimation = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(
-      CurvedAnimation(
-        parent: animation,
-        curve: const Interval(
-          0,
-          0.6,
-          curve: Curves.easeInOut,
-        ),
-      ),
-    );
-
-    final targetAnimation = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(
-      CurvedAnimation(
-        parent: animation,
-        curve: const Interval(
-          0.3,
-          1,
-          curve: Curves.easeInOut,
-        ),
-      ),
-    );
+    final alignment = widget.alignment.resolve(Directionality.of(context));
 
     return Align(
       alignment: axisAlign,
-      heightFactor: math.max(slideInAnimation.value, 0.0),
-      child: transformerBuilder(context, targetAnimation, alignment, child),
+      heightFactor: math.max(_slideInAnimation.value, 0.0),
+      child: widget.transformerBuilder(context, _targetAnimation, alignment, widget.child),
     );
   }
 }
