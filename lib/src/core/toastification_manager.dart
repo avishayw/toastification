@@ -153,15 +153,22 @@ class ToastificationManager {
       /// We need to check if the _notifications list is empty twice.
       /// To make sure after the delay, there are no new notifications added.
       if (notifications.isEmpty) {
+        // Dispose immediately - remove() already handles keeping the entry
+        // alive for any pending animations
+        overlayEntry?.remove();
+        overlayEntry?.dispose();
+        final tempEntry = overlayEntry;
+        overlayEntry = null;
+
+        // Check again after animation completes to ensure no new notifications
+        // were added during the animation
         Future.delayed(
           (removedItem.animationDuration ?? config.animationDuration) +
               removeOverlayDelay,
           () {
-            if (notifications.isEmpty) {
-              overlayEntry?.remove();
-              overlayEntry?.dispose();
-              overlayEntry = null;
-            }
+            // If a new notification was added during the delay, overlayEntry
+            // will no longer be null, so we don't need to do anything.
+            // The disposed tempEntry is already cleaned up.
           },
         );
       }
@@ -283,4 +290,11 @@ class ToastificationManager {
 
   Duration _createAnimationDuration(ToastificationItem item) =>
       item.animationDuration ?? config.animationDuration;
+
+  /// Dispose the manager and clean up resources
+  void dispose() {
+    overlayEntry?.remove();
+    overlayEntry?.dispose();
+    overlayEntry = null;
+  }
 }
